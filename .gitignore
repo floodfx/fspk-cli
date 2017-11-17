@@ -1,0 +1,13 @@
+*.pyc
+
+dist/
+build/
+*.egg-info/
+
+.tox/
+.coverage
+
+faaspack_conf.yml
+faaspack.zip
+
+venv
