@@ -69,9 +69,12 @@ def install(name, version, stage, memory, timeout, region, debug, mode): #, clou
             fp_common.debug("ares: %s" % ares)
     else:
         # create lambda function
-
-        # but first ask for settings
-
+        # but first ask for gather env
+        env = {}
+        for e in confDict['env']:
+            prompt = e['description'] if('description' in e.keys()) else e['name']
+            data = sanitised_input(prompt)
+            env[e['name']] = data
 
         # now creates
         description = name if(not 'description' in confDict.keys()) else confDict['description']
@@ -81,14 +84,10 @@ def install(name, version, stage, memory, timeout, region, debug, mode): #, clou
             'nodejs6.10',
             'index.handle',
             description,
-            10, # second timeout
-            128, # MB of memory
+            timeout,
+            memory,
             {
-                'Variables': {
-                    'STRIPE_SIGNING_SECRET': 'mysecret',
-                    'STRIPE_API_KEY': 'myapikey',
-                    'DEST_SQS_URL': 'sqs_url',
-                }
+                'Variables': env
             },
             {
                 'faaspack_name': name
@@ -145,6 +144,7 @@ def update(name, version, stage, region, debug, mode):
         fp_common.exit()
 
     # update 'current' alias to the new version
+    # TODO if change in MAJOR or MINOR semver, re-prompt for env inputs?
     fp_lambda.update_alias_to_version(name, 'current', version)
     fp_common.info("Updated FaaSPack - name: %(name)s, to version: %(version)s" % locals())
 
@@ -223,7 +223,7 @@ def configure(name, stage, memory, timeout, region, debug, mode):
 @click.command(help="Publishes FaaSPack")
 @click.option('-z', '--zip', default='./faaspack.zip', help="the FaaSPack zip file")
 @click.option('-d', '--debug', is_flag=True, help='print debugging messages')
-@click.option('-m', '--mode', default='prod', help='mode of operation [unusual to change]')
+@click.option('-o', '--mode', default='prod', help='mode of operation [unusual to change]')
 def publish(zip, debug, mode):
     fp_common = FPCommon('us-east-1', debug, 'prod', mode)
 
@@ -251,6 +251,7 @@ def publish(zip, debug, mode):
 
     # otherwise, upload zip & conf
     zipfile = open(zip, 'r')
+    conf = open('./faaspack_conf.yml', 'r')
     fp_common.fp_upload_conf(conf, name, version, scope)
     fp_common.fp_upload_zip(zipfile, name, version, scope)
 
