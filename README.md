@@ -16,9 +16,9 @@ Simply run:
 * We assume you have an AWS account
 * We assume you have AWS credentials setup
 * We assume those credentials can:
- * Create / Manage IAM Roles
- * Create / Manage Lambda Functions
- * Create / Manage API Gateway
+  * Create / Manage IAM Roles
+  * Create / Manage Lambda Functions
+  * Create / Manage API Gateway
 
 ### Hello World
 Install the `hello-world-faaspack` FaaSPack.
