@@ -71,10 +71,11 @@ def install(name, version, stage, memory, timeout, region, debug, mode): #, clou
         # create lambda function
         # but first ask for gather env
         env = {}
-        for e in confDict['env']:
-            prompt = e['description'] if('description' in e.keys()) else e['name']
-            data = sanitised_input(prompt)
-            env[e['name']] = data
+        if('env' in confDict.keys()):
+            for e in confDict['env']:
+                prompt = e['description'] if('description' in e.keys()) else e['name']
+                data = sanitised_input(prompt)
+                env[e['name']] = data
 
         # now creates
         description = name if(not 'description' in confDict.keys()) else confDict['description']
@@ -184,11 +185,12 @@ def configure(name, stage, memory, timeout, region, debug, mode):
 
     # ask for input
     env = {}
-    for e in confDict['env']:
-        fp_common.debug("%s" % e)
-        prompt = e['description'] if('description' in e.keys()) else e['name']
-        data = sanitised_input(prompt)
-        env[e['name']] = data
+    if('env' in confDict.keys()):
+        for e in confDict['env']:
+            fp_common.debug("%s" % e)
+            prompt = e['description'] if('description' in e.keys()) else e['name']
+            data = sanitised_input(prompt)
+            env[e['name']] = data
 
     # first update function code to use current version code
     # this ensures $LATEST is the right code...
@@ -291,6 +293,6 @@ def sanitised_input(prompt, type_=None, min_=None, max_=None, range_=None):
         else:
             return ui
 
-if __name__ == '__main__':
-    fp()
+# if __name__ == '__main__':
+#     fp()
     # fire.Fire()

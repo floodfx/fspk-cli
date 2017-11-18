@@ -3,13 +3,13 @@ Manage FaaSPacks via Command Line
 """
 from setuptools import find_packages, setup
 
-dependencies = ['click', 'boto3', 'PyYaml']
+dependencies = ['Click', 'boto3', 'PyYaml']
 
 setup(
     name='fspk',
     version='0.0.1',
     url='https://github.com/floodfx/fspk-cli',
-    license='BSD',
+    license='Apache2.0',
     author='Donnie Flood',
     author_email='pypi@floodfx.com',
     description='Manage FaaSPacks via Command Line',
@@ -21,7 +21,7 @@ setup(
     install_requires=dependencies,
     entry_points={
         'console_scripts': [
-            'fspk = fspk.cli:main',
+            'fspk = fspk.cli:fp',
         ],
     },
     classifiers=[
@@ -35,7 +35,7 @@ setup(
         # 'Development Status :: 7 - Inactive',
         'Environment :: Console',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
+        'License :: OSI Approved :: Apache Software License',
         'Operating System :: POSIX',
         'Operating System :: MacOS',
         'Operating System :: Unix',
