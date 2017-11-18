@@ -141,6 +141,18 @@ class FPLambda:
             'alias for version: %s' % version
         )
 
+    def update_lambda_configuration(self, lambda_name, env, memory=None, timeout=None):
+        params = {
+            'FunctionName': lambda_name,
+            'Environment': {
+                'Variables': env
+            }
+        }
+        if(memory is not None):
+            params['MemorySize'] = memory
+        if(timeout is not None):
+            params['Timeout'] = timeout
+        return self._fp_common._lmda.update_function_configuration(**params)
 
     def create_lambda_alias(self, lambda_name, alias, function_version, desc=''):
         # create alias
@@ -149,6 +161,19 @@ class FPLambda:
             Name=alias,
             FunctionVersion=function_version,
             Description=desc
+        )
+
+    def update_lambda_function_code_to_current(self, lambda_name):
+        current_version = self.get_current_lambda_version(lambda_name)
+        # split into s3bucket and key
+        bucket = self._fp_common.fp_bucket()
+        zip_key = self._fp_common.fp_zip_key(lambda_name, current_version)
+        # update function code but don't publish
+        return self._fp_common._lmda.update_function_code(
+            FunctionName=lambda_name,
+            S3Bucket=bucket,
+            S3Key=zip_key,
+            Publish=False,
         )
 
     def update_lambda_function(self, lambda_name, version):
@@ -177,6 +202,12 @@ class FPLambda:
             FunctionName=lambda_name,
             Name=alias,
             FunctionVersion=function_version
+        )
+
+    def publish_lambda_code_and_config(self, lambda_name, codeSha256):
+        return self._fp_common._lmda.publish_version(
+            FunctionName=lambda_name,
+            CodeSha256=codeSha256
         )
 
     def default_assume_role_policy_doc(self):

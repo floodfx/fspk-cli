@@ -13,10 +13,12 @@ def fp():
 @click.argument('name')
 @click.option('-v', '--version', default='latest', help='version to install')
 @click.option('-s', '--stage', default='dev', help='stage for install. typically: prod or dev')
+@click.option('-m', '--memory', default=128, help='amount of memory (MB) to provision for FaaSPack')
+@click.option('-t', '--timeout', default=10, help='time (seconds) before FaaSPack should timeout')
 @click.option('-r', '--region', default='us-east-1', help='region for install. defaults to profile setting')
 @click.option('-d', '--debug', is_flag=True, help='print debugging messages')
-@click.option('-m', '--mode', default='prod', help='mode of operation [unusual to change]')
-def install(name, version, stage, region, debug, mode): #, cloud, profile):
+@click.option('-o', '--mode', default='prod', help='mode of operation [unusual to change]')
+def install(name, version, stage, memory, timeout, region, debug, mode): #, cloud, profile):
 
     # TODO change from 'dev'
     fp_common = FPCommon(region, debug, stage, mode)
@@ -66,7 +68,12 @@ def install(name, version, stage, region, debug, mode): #, cloud, profile):
             ares = fp_lambda.create_lambda_alias(name, encodedSemver, res['Version'])
             fp_common.debug("ares: %s" % ares)
     else:
-        # create lambda function if not installed
+        # create lambda function
+
+        # but first ask for settings
+
+
+        # now creates
         description = name if(not 'description' in confDict.keys()) else confDict['description']
         fp_lambda.create_lambda_function(
             name,
@@ -106,7 +113,7 @@ def install(name, version, stage, region, debug, mode): #, cloud, profile):
 @click.option('-s', '--stage', default='dev', help='stage for install. typically: prod or dev')
 @click.option('-r', '--region', default='us-east-1', help='region for install')
 @click.option('-d', '--debug', is_flag=True, help='print debugging messages')
-@click.option('-m', '--mode', default='prod', help='mode of operation [unusual to change]')
+@click.option('-o', '--mode', default='prod', help='mode of operation [unusual to change]')
 def update(name, version, stage, region, debug, mode):
     fp_common = FPCommon(region, debug, stage, mode)
     fp_lambda = FPLambda(fp_common)
@@ -139,8 +146,63 @@ def update(name, version, stage, region, debug, mode):
 
     # update 'current' alias to the new version
     fp_lambda.update_alias_to_version(name, 'current', version)
-    fp_common.info("Updated FaasPack - name: %(name)s, to version: %(version)s" % locals())
+    fp_common.info("Updated FaaSPack - name: %(name)s, to version: %(version)s" % locals())
 
+
+@click.command(help="Configures 'current' version of FaaSPack")
+@click.argument('name')
+@click.option('-s', '--stage', default='dev', help='stage for install. typically: prod or dev')
+@click.option('-m', '--memory', default=None, help='amount of memory (MB) to provision for FaaSPack')
+@click.option('-t', '--timeout', default=None, help='time (seconds) before FaaSPack should timeout')
+@click.option('-r', '--region', default='us-east-1', help='region for install')
+@click.option('-d', '--debug', is_flag=True, help='print debugging messages')
+@click.option('-o', '--mode', default='prod', help='mode of operation [unusual to change]')
+def configure(name, stage, memory, timeout, region, debug, mode):
+    fp_common = FPCommon(region, debug, stage, mode)
+    fp_lambda = FPLambda(fp_common)
+
+    fp_common.info("Configuring FaaSPack - name: %(name)s, stage: %(stage)s in region: %(region)s" % locals())
+
+    # split name into scope and name
+    name, scope = fp_common.fp_name_split(name)
+
+    # ensure faaspack installed
+    lambda_exists = fp_lambda.check_lambda_exists(name)
+    if(not lambda_exists):
+        fp_common.error("No version of '%(name)s' is installed." % locals(), True)
+
+    # get current version
+    current_version = fp_lambda.get_current_lambda_version(name)
+    fp_common.info("Current version: %(current_version)s" % locals())
+
+    # get configuration for current version
+    conf = fp_common.fp_download_conf(name, current_version, scope)
+    fp_common.debug("Configuration for FaasPack - name: %(name)s, version: %(current_version)s" % locals())
+    fp_common.debug(conf)
+    # parse config yaml
+    confDict = yaml.load(conf)
+
+    # ask for input
+    env = {}
+    for e in confDict['env']:
+        fp_common.debug("%s" % e)
+        prompt = e['description'] if('description' in e.keys()) else e['name']
+        data = sanitised_input(prompt)
+        env[e['name']] = data
+
+    # first update function code to use current version code
+    # this ensures $LATEST is the right code...
+    code_res = fp_lambda.update_lambda_function_code_to_current(name)
+    # now update configuration
+    res = fp_lambda.update_lambda_configuration(name, env, memory, timeout)
+    # finally publish
+    res = fp_lambda.publish_lambda_code_and_config(name, code_res['CodeSha256'])
+    published_version = res['Version']
+    # and update version and current alias to point at new published version
+    encodedSemver = fp_common.semverEncode(current_version)
+    res = fp_lambda.update_lambda_alias(name, encodedSemver, published_version)
+    res = fp_lambda.update_lambda_alias(name, 'current', published_version)
+    # TODO clean up old versions?
 
 
 # @click.command(help="Removes FaaSPack from your cloud")
@@ -194,6 +256,7 @@ def publish(zip, debug, mode):
 
 fp.add_command(install)
 fp.add_command(update)
+fp.add_command(configure)
 # fp.add_command(uninstall)
 fp.add_command(publish)
 
@@ -201,7 +264,7 @@ def sanitised_input(prompt, type_=None, min_=None, max_=None, range_=None):
     if min_ is not None and max_ is not None and max_ < min_:
         raise ValueError("min_ must be less than or equal to max_.")
     while True:
-        ui = input(prompt)
+        ui = click.prompt(prompt)
         if type_ is not None:
             try:
                 ui = type_(ui)
