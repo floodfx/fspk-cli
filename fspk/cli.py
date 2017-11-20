@@ -4,7 +4,7 @@ from fspk_lambda import FPLambda
 import click
 import yaml
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 @click.group()
 def fp():
@@ -77,8 +77,10 @@ def install(name, version, stage, memory, timeout, region, debug, mode): #, clou
         env = {}
         if('env' in confDict.keys()):
             for e in confDict['env']:
-                prompt = e['description'] if('description' in e.keys()) else e['name']
-                data = sanitised_input(prompt)
+                prompt_description = "- %s" % e['description'] if('description' in e.keys()) else ''
+                prompt_name = e['name']
+                prompt = "%(prompt_name)s %(prompt_description)s" % locals()
+                data = sanitised_input(prompt, '')
                 env[e['name']] = data
 
         # now create
@@ -208,13 +210,20 @@ def configure(name, stage, memory, timeout, region, debug, mode):
     # parse config yaml
     confDict = yaml.load(conf)
 
+    # current configration
+    currentConf = fp_lambda.get_current_lambda_configuration(name)
+    fp_common.debug("currentConf %s" % currentConf)
+
     # ask for input
     env = {}
     if('env' in confDict.keys()):
         for e in confDict['env']:
             fp_common.debug("%s" % e)
-            prompt = e['description'] if('description' in e.keys()) else e['name']
-            data = sanitised_input(prompt)
+            prompt_description = "- %s" % e['description'] if('description' in e.keys()) else ''
+            prompt_name = e['name']
+            prompt_default = currentConf[prompt_name] if(prompt_name in currentConf.keys()) else None
+            prompt = "%(prompt_name)s %(prompt_description)s" % locals()
+            data = sanitised_input(prompt, prompt_default)
             env[e['name']] = data
 
     # first update function code to use current version code
@@ -289,11 +298,11 @@ fp.add_command(configure)
 # fp.add_command(uninstall)
 fp.add_command(publish)
 
-def sanitised_input(prompt, type_=None, min_=None, max_=None, range_=None):
+def sanitised_input(prompt, defaultVal=None, type_=None, min_=None, max_=None, range_=None):
     if min_ is not None and max_ is not None and max_ < min_:
         raise ValueError("min_ must be less than or equal to max_.")
     while True:
-        ui = click.prompt(prompt)
+        ui = click.prompt(prompt, default=defaultVal)
         if type_ is not None:
             try:
                 ui = type_(ui)

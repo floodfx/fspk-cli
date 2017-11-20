@@ -164,6 +164,17 @@ class FPLambda:
             params['Timeout'] = timeout
         return self._fp_common._lmda.update_function_configuration(**params)
 
+    def get_current_lambda_configuration(self, lambda_name):
+        current_version = self.get_current_lambda_version(lambda_name)
+        if(current_version is None):
+            return None
+
+        res = self._fp_common._lmda.get_function(
+            FunctionName=lambda_name,
+            Qualifier='current'
+        )
+        return res['Configuration']['Environment']['Variables']
+
     def create_lambda_alias(self, lambda_name, alias, function_version, desc=''):
         # create alias
         return self._fp_common._lmda.create_alias(
