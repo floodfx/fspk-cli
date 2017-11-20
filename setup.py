@@ -2,12 +2,19 @@
 Manage FaaSPacks via Command Line
 """
 from setuptools import find_packages, setup
+import re
 
 dependencies = ['Click', 'boto3', 'PyYaml']
 
+version = re.search(
+    '^__version__\s*=\s*"(.*)"',
+    open('fspk/cli.py').read(),
+    re.M
+    ).group(1)
+
 setup(
     name='fspk',
-    version='0.0.2',
+    version=version,
     url='https://github.com/floodfx/fspk-cli',
     license='Apache2.0',
     author='Donnie Flood',

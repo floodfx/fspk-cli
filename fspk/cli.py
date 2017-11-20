@@ -4,8 +4,11 @@ from fspk_lambda import FPLambda
 import click
 import yaml
 
+__version__ = "0.0.3"
+
 @click.group()
 def fp():
+    click.echo("FaaSPack Tool: Version [%s]" % __version__)
     pass
 
 # checks for existing install.  creates if not, updates if so
