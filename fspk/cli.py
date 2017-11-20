@@ -19,9 +19,10 @@ def fp():
 @click.option('-d', '--debug', is_flag=True, help='print debugging messages')
 @click.option('-o', '--mode', default='prod', help='mode of operation [unusual to change]')
 def install(name, version, stage, memory, timeout, region, debug, mode): #, cloud, profile):
-
-    # TODO change from 'dev'
     fp_common = FPCommon(region, debug, stage, mode)
+
+    if(not region in ['us-east-1', 'us-west-2']):
+        fp_common.error("Currently FaaSPack only supports regions 'us-east-1' and 'us-west-2'.", True)
 
     fp_common.info("Installing FaaSPack - name: %(name)s, version: %(version)s, stage: %(stage)s to region: %(region)s" % locals())
     # split name into scope and name
@@ -77,7 +78,7 @@ def install(name, version, stage, memory, timeout, region, debug, mode): #, clou
                 data = sanitised_input(prompt)
                 env[e['name']] = data
 
-        # now creates
+        # now create
         description = name if(not 'description' in confDict.keys()) else confDict['description']
         fp_lambda.create_lambda_function(
             name,
@@ -94,6 +95,21 @@ def install(name, version, stage, memory, timeout, region, debug, mode): #, clou
                 'faaspack_name': name
             }
         )
+        # check for additional iam settings
+        iam_statements = []
+        if('aws' in confDict.keys() and 'iam' in confDict['aws'].keys()):
+            for r in confDict['aws']['iam']:
+                statement = {
+                    'Effect': r['Effect'],
+                    'Action': r['Action'],
+                    'Resource': r['Resource']
+                }
+                iam_statements.append(statement)
+        fp_common.debug("iam statements: %s" % iam_statements)
+        # create inline policy if iam statements
+        if(len(iam_statements) > 0):
+            policy_name = '%(name)s-inline-policy' % locals()
+            fp_lambda.put_role_policy(name, policy_name, iam_statements)
 
         # install apig if needed
         if('http-trigger' in confDict and confDict['http-trigger'] == True):
@@ -116,6 +132,9 @@ def install(name, version, stage, memory, timeout, region, debug, mode): #, clou
 @click.option('-o', '--mode', default='prod', help='mode of operation [unusual to change]')
 def update(name, version, stage, region, debug, mode):
     fp_common = FPCommon(region, debug, stage, mode)
+    if(not region in ['us-east-1', 'us-west-2']):
+        fp_common.error("Currently FaaSPack only supports regions 'us-east-1' and 'us-west-2'.", True)
+
     fp_lambda = FPLambda(fp_common)
 
     fp_common.info("Updating FaaSPack - name: %(name)s, to version: %(version)s, stage: %(stage)s in region: %(region)s" % locals())
@@ -160,6 +179,9 @@ def update(name, version, stage, region, debug, mode):
 @click.option('-o', '--mode', default='prod', help='mode of operation [unusual to change]')
 def configure(name, stage, memory, timeout, region, debug, mode):
     fp_common = FPCommon(region, debug, stage, mode)
+    if(not region in ['us-east-1', 'us-west-2']):
+        fp_common.error("Currently FaaSPack only supports regions 'us-east-1' and 'us-west-2'.", True)
+
     fp_lambda = FPLambda(fp_common)
 
     fp_common.info("Configuring FaaSPack - name: %(name)s, stage: %(stage)s in region: %(region)s" % locals())
@@ -227,7 +249,8 @@ def configure(name, stage, memory, timeout, region, debug, mode):
 @click.option('-d', '--debug', is_flag=True, help='print debugging messages')
 @click.option('-o', '--mode', default='prod', help='mode of operation [unusual to change]')
 def publish(zip, debug, mode):
-    fp_common = FPCommon('us-east-1', debug, 'prod', mode)
+    region = 'us-east-1' # always publish to us-east-1
+    fp_common = FPCommon(region, debug, 'prod', mode)
 
     # read in conf
     conf = open('./faaspack_conf.yml', 'r')

@@ -3,6 +3,7 @@ import botocore
 import json
 import time
 import click
+import re
 
 class FPLambda:
 
@@ -76,6 +77,15 @@ class FPLambda:
         return self._fp_common._iam.attach_role_policy(
             RoleName=role_name,
             PolicyArn=policy_arn
+        )
+
+    def put_role_policy(self, role_name, policy_name, statements):
+        policy_doc = self.gen_policy_document(statements)
+        self._fp_common.debug("policy_doc: %s" % policy_doc)
+        return self._fp_common._iam.put_role_policy(
+            RoleName=role_name,
+            PolicyName=policy_name,
+            PolicyDocument=policy_doc
         )
 
     def create_basic_iam_role(self, lambda_name):
@@ -209,6 +219,31 @@ class FPLambda:
             FunctionName=lambda_name,
             CodeSha256=codeSha256
         )
+
+    def gen_policy_document(self, statements):
+        statement = ",".join(map(self.gen_statement, statements))
+        return (
+            '{'
+                '"Version": "2012-10-17",'
+                '"Statement": [%(statement)s]'
+            '}'
+        ) % locals()
+
+    def gen_statement(self, statement):
+        effect = statement['Effect']
+        actions = ",".join(map(lambda s: "\"%s\"" % s, statement['Action']))
+        resources = ",".join(map(lambda r: "\"%r\"" % r, statement['Resource']))
+        # replace '*' with *
+        resources = re.sub("\'\*\'", "*", resources)
+        # replace '*' with *
+        actions = re.sub("\'\*\'", "*", actions)
+        return (
+            '{'
+                '"Effect": "%(effect)s",'
+                '"Action":[%(actions)s],'
+                '"Resource":[%(resources)s]'
+            '}'
+        ) % locals()
 
     def default_assume_role_policy_doc(self):
         # note: multiline string below

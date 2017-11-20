@@ -7,7 +7,7 @@ dependencies = ['Click', 'boto3', 'PyYaml']
 
 setup(
     name='fspk',
-    version='0.0.1',
+    version='0.0.2',
     url='https://github.com/floodfx/fspk-cli',
     license='Apache2.0',
     author='Donnie Flood',
